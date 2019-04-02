@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import javax.ejb.EJB;
-import javax.ejb.Singleton;
 import javax.servlet.Filter;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
@@ -25,7 +24,6 @@ import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.transaction.Transactional;
 
 /**
  * Lösungsvorschlag von Martin Kutscher. Da in der web.xml nur ein
@@ -35,18 +33,18 @@ import javax.transaction.Transactional;
  * In der web.xml müssen hierfür folgende Zeilen ergänzt werden, um diese Klasse
  * zu konfigurieren:
  *
- *   <filter>
- *     <filter-name>BasicAuthFilter</filter-name>
- *     <filter-class>dhbwka.wwi.vertsys.javaee.jtodo.tasks.rest.BasicLoginFilter</filter-class>
- *   <init-param>
- *     <param-name>role-names-comma-sep</param-name>
- *     <param-value>app-user</param-value>
- *   </init-param>
- *   </filter>
- *     <filter-mapping>
- *     <filter-name>BasicLoginFilter</filter-name>
- *     <url-pattern>/api/*</url-pattern>
- *   </filter-mapping>
+ * <filter>
+ * <filter-name>BasicAuthFilter</filter-name>
+ * <filter-class>dhbwka.wwi.vertsys.javaee.jtodo.tasks.rest.BasicLoginFilter</filter-class>
+ * <init-param>
+ * <param-name>role-names-comma-sep</param-name>
+ * <param-value>app-user</param-value>
+ * </init-param>
+ * </filter>
+ * <filter-mapping>
+ * <filter-name>BasicLoginFilter</filter-name>
+ * <url-pattern>/api/*</url-pattern>
+ * </filter-mapping>
  *
  * Vgl.
  * https://stackoverflow.com/questions/27588665/how-do-i-configure-both-basic-and-form-authentication-methods-in-the-same-java-e
@@ -58,7 +56,7 @@ public class BasicLoginFilter implements Filter {
     private static final String FILTER_PARAMETER_ROLE_NAMES_COMMA_SEPARATED = "role-names-comma-sep";
     private static final String ROLE_SEPARATOR = ",";
     private static final String BASIC_AUTH_SEPARATOR = ":";
-    
+
     @EJB
     private UserBean userBean;
 
@@ -89,28 +87,32 @@ public class BasicLoginFilter implements Filter {
     @Override
     public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain)
             throws IOException, ServletException {
-        
+
         HttpServletRequest request = (HttpServletRequest) req;
         HttpServletResponse response = (HttpServletResponse) resp;
 
         // Benutzername und Password aus den Authorozation-Header auslesen
         String authHeader = request.getHeader(AUTHORIZATION_HEADER);
         if (authHeader == null || !authHeader.startsWith(BASIC_PREFIX)) {
-            throw new ServletException("Authorization Header fehlt");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Authorization Header fehlt");
+            return;
         }
 
         String autfHeaderUserPwPart = authHeader.substring(BASIC_PREFIX.length());
         if (autfHeaderUserPwPart == null) {
-            throw new ServletException("Anmeldung nur über Basic-Auth möglich");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Anmeldung nur über Basic-Auth möglich");
+            return;
         }
 
         String headerDecoded = new String(Base64.getDecoder().decode(autfHeaderUserPwPart));
         if (!headerDecoded.contains(BASIC_AUTH_SEPARATOR)) {
-            throw new ServletException("Benutzername oder Passwort fehlt");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Benutzername oder Passwort fehlt");
+            return;
         }
         String[] userPwPair = headerDecoded.split(BASIC_AUTH_SEPARATOR);
         if (userPwPair.length != 2) {
-            throw new ServletException("Benutzername oder Passwort fehlt");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Benutzername oder Passwort fehlt");
+            return;
         }
         String userDecoded = userPwPair[0];
         String passDecoded = userPwPair[1];
@@ -122,11 +124,12 @@ public class BasicLoginFilter implements Filter {
         // Logindaten und Rollenzuordnung prüfen
         User user = this.userBean.findByUsername(userDecoded);
         boolean hasRoles = false;
-        
+
         if (user == null) {
-            throw new ServletException("Benutzerprofil nicht gefunden");            
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Benutzerprofil nicht gefunden");
+            return;
         }
-        
+
         for (String role : this.roleNames) {
             if (user.getGroups().contains(role)) {
                 hasRoles = true;
@@ -136,9 +139,9 @@ public class BasicLoginFilter implements Filter {
 
         if (hasRoles) {
             chain.doFilter(request, response);
-            //request.logout(); // optional
+           
         } else {
-            throw new ServletException("Keine ausreichenden Berechtigungen");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Keine ausreichenden Berechtigungen");
         }
     }
 
