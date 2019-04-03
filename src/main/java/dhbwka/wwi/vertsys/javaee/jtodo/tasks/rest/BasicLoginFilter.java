@@ -34,16 +34,16 @@ import javax.servlet.http.HttpServletResponse;
  * zu konfigurieren:
  *
  * <filter>
- * <filter-name>BasicAuthFilter</filter-name>
- * <filter-class>dhbwka.wwi.vertsys.javaee.jtodo.tasks.rest.BasicLoginFilter</filter-class>
- * <init-param>
- * <param-name>role-names-comma-sep</param-name>
- * <param-value>app-user</param-value>
- * </init-param>
+ *     <filter-name>BasicLoginFilter</filter-name>
+ *     <filter-class>dhbwka.wwi.vertsys.javaee.jtodo.tasks.rest.BasicLoginFilter</filter-class>
+ *     <init-param>
+ *         <param-name>role-names-comma-sep</param-name>
+ *         <param-value>app-user</param-value>
+ *     </init-param>
  * </filter>
  * <filter-mapping>
- * <filter-name>BasicLoginFilter</filter-name>
- * <url-pattern>/api/*</url-pattern>
+ *     <filter-name>BasicLoginFilter</filter-name>
+ *     <url-pattern>/api/*</url-pattern>
  * </filter-mapping>
  *
  * Vgl.
